@@ -1,0 +1,66 @@
+{
+    "name": "@pipewave/reactpkg",
+    "private": false,
+    "publishConfig": {
+        "access": "public"
+    },
+    "version": "0.0.3",
+    "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/pipewave-dev/reactpkg.git"
+    },
+    "main": "./dist/index.es.js",
+    "module": "./dist/index.es.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.es.js"
+        },
+        "./context": {
+            "types": "./dist/context.d.ts",
+            "import": "./dist/context.es.js"
+        },
+        "./hooks": {
+            "types": "./dist/hooks.d.ts",
+            "import": "./dist/hooks.es.js"
+        }
+    },
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "typecheck": "tsc -b",
+        "lint": "eslint .",
+        "preview": "vite preview",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@msgpack/msgpack": "^3.1.3"
+    },
+    "peerDependencies": {
+        "react": "^19.0.0 || ^20.0.0",
+        "react-dom": "^19.0.0 || ^20.0.0",
+        "react-router-dom": "^6.0.0 || ^7.0.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.1",
+        "@types/node": "^24.10.2",
+        "@types/react": "^19.2.5",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^5.1.1",
+        "eslint": "^9.39.1",
+        "eslint-plugin-react-hooks": "^7.0.1",
+        "eslint-plugin-react-refresh": "^0.4.24",
+        "globals": "^17.1.0",
+        "tsx": "^4.21.0",
+        "typescript": "~5.9.3",
+        "typescript-eslint": "^8.46.4",
+        "vite": "^6.0.11",
+        "vite-plugin-dts": "^4.5.4"
+    },
+    "sideEffects": false
+}
