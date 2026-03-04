@@ -8,7 +8,8 @@ import { PipewaveContextProvider } from './pipewaveWsApi'
 
 interface Props {
     config: PipewaveModuleConfig
-    eventHandler: WebsocketEventHandler
+
+    eventHandler?: WebsocketEventHandler
     children: ReactNode
 }
 
@@ -24,22 +25,18 @@ interface Props {
  * of the Pipewave API and WebSocket connection.
  */
 function PipewaveProvider({ config, eventHandler, children }: Props) {
+    eventHandler = eventHandler || {}
     const eventHandlerUtils = useMemo(() => new WsEventHandlerUtils(eventHandler), [eventHandler])
 
     const api = useMemo(() => new PipewaveApi({
         restConfig: {
             endpoint: config.backendEndpoint,
             insecure: config.insecure,
-            debugMode: config.debugMode,
             getAccessToken: config.getAccessToken,
         },
         websocketConfig: {
             eventHandler: eventHandlerUtils,
-            retryCfg: {
-                maxRetry: 3,
-                initialRetryDelay: 1000,
-                maxRetryDelay: 5000,
-            },
+            retryCfg: config.retry,
             enableLongPollingFallback: true,
         }
     }), [eventHandlerUtils, config])

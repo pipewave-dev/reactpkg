@@ -1,7 +1,6 @@
 export interface RestConfig {
     endpoint: string
     insecure: boolean
-    debugMode: boolean
     getAccessToken: () => Promise<string>
 }
 
