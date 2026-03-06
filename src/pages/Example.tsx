@@ -10,7 +10,6 @@ const config = new PipewaveModuleConfig(
     {
         backendEndpoint: 'localhost:8080/websocket',
         insecure: true,
-        debugMode: true,
         getAccessToken: async () => accessToken.value,
     }
 )
