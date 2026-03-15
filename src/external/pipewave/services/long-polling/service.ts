@@ -50,7 +50,7 @@ export class LongPollingService {
         this.startPollLoop()
     }
 
-    public async send(data: WebsocketMessage): Promise<void> {
+    public async send(data: Pick<WebsocketMessage, 'Id' | 'MsgType' | 'Data'>): Promise<void> {
         if (!this.isConnected) {
             throw new Unexpected('LongPolling is not connected')
         }
@@ -158,6 +158,7 @@ export class LongPollingService {
                 if (unpacked.t === HEARTBEAT_MSG_TYPE) continue
                 await this.params.eventHandler.onData({
                     Id: unpacked.i,
+                    ReturnToId: unpacked.r,
                     MsgType: unpacked.t,
                     Data: unpacked.b,
                     Error: unpacked.e,
@@ -207,7 +208,7 @@ export class LongPollingService {
     }
 }
 
-function packMessage(data: WebsocketMessage): Uint8Array<ArrayBuffer> {
+function packMessage(data: Pick<WebsocketMessage, 'Id' | 'MsgType' | 'Data'>): Uint8Array<ArrayBuffer> {
     const encoded = encode({
         i: data.Id,
         t: data.MsgType,

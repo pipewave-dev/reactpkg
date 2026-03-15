@@ -61,7 +61,7 @@ export class WebSocketService {
             this.WebSocketClient.onopen = async () => {
                 this.retryCount = 0
                 this.retryDelay = this.params.retryCfg.initialRetryDelay
-                this.heartbeatInterval = setInterval(() => this.sendHeartbeat(), 30000)
+                this.heartbeatInterval = setInterval(() => this.sendHeartbeat(), this.params.heartbeatInterval ?? 30000)
                 if (this.params.eventHandler.onOpen) {
                     await this.params.eventHandler.onOpen()
                 }
@@ -77,6 +77,7 @@ export class WebSocketService {
                 }
                 this.params.eventHandler.onData({
                     Id: data.i,
+                    ReturnToId: data.r,
                     MsgType: data.t as string,
                     Data: data.b,
                     Error: data.e
@@ -99,17 +100,7 @@ export class WebSocketService {
                 }
                 this.WebSocketClient = null
                 if (this.keepAlive) {
-                    this.retryCount++
-                    if (this.retryCount >= this.params.retryCfg.maxRetry) {
-                        this.isSuspend = true
-                        if (this.params.eventHandler.onMaxRetry) {
-                            this.params.eventHandler.onMaxRetry(() => this.resetRetryCount())
-                        }
-                    } else {
-                        const delay = this.retryDelay
-                        this.retryDelay = Math.min(this.retryDelay * 2, this.params.retryCfg.maxRetryDelay)
-                        setTimeout(() => this.connect(), delay)
-                    }
+                    this.handleRetryOrSuspend()
                 }
             };
 
@@ -118,19 +109,26 @@ export class WebSocketService {
             // When network error, we will set to MAX RETRY (need user action to reset)
             this.retryCount = this.params.retryCfg.maxRetry
             if (this.keepAlive) {
-                this.retryCount++
-                if (this.retryCount >= this.params.retryCfg.maxRetry) {
-                    this.isSuspend = true
-                    if (this.params.eventHandler.onMaxRetry) {
-                        this.params.eventHandler.onMaxRetry(() => this.resetRetryCount())
-                    }
-                } else {
-                    const delay = this.retryDelay
-                    this.retryDelay = Math.min(this.retryDelay * 2, this.params.retryCfg.maxRetryDelay)
-                    setTimeout(() => this.connect(), delay)
-                }
+                this.handleRetryOrSuspend()
             }
             return null
+        }
+    }
+
+    private handleRetryOrSuspend() {
+        this.retryCount++
+        if (this.retryCount >= this.params.retryCfg.maxRetry) {
+            this.isSuspend = true
+            if (this.params.eventHandler.onMaxRetry) {
+                this.params.eventHandler.onMaxRetry(() => this.resetRetryCount())
+            }
+        } else {
+            if (this.params.eventHandler.onReconnect) {
+                this.params.eventHandler.onReconnect(this.retryCount)
+            }
+            const delay = this.retryDelay
+            this.retryDelay = Math.min(this.retryDelay * 2, this.params.retryCfg.maxRetryDelay)
+            setTimeout(() => this.connect(), delay)
         }
     }
 
@@ -176,7 +174,7 @@ export class WebSocketService {
         }
     }
 
-    async send(data: WebsocketMessage) {
+    async send(data: Pick<WebsocketMessage, 'Id' | 'MsgType' | 'Data'>) {
         if (this.getStatus() !== WsStatus.READY) {
             throw new Unexpected('WebSocket is not open')
         }
@@ -210,7 +208,7 @@ export class WebSocketService {
     }
 }
 
-function Pack(data: WebsocketMessage): Uint8Array {
+function Pack(data: Pick<WebsocketMessage, 'Id' | 'MsgType' | 'Data'>): Uint8Array<ArrayBuffer> {
     return encode({
         i: data.Id,
         t: data.MsgType,

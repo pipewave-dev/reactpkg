@@ -8,10 +8,12 @@ export interface WebsocketConfig {
     eventHandler: WebsocketEventHandler
     retryCfg: WebSocketServiceParams
     enableLongPollingFallback?: boolean
+    heartbeatInterval?: number
     instanceID?: () => Promise<string>
 }
 export interface WebsocketMessage {
     Id: string
+    ReturnToId: string
     MsgType: string
     Data: Uint8Array
     Error: string
@@ -22,6 +24,9 @@ export interface WebsocketEventHandler {
     onError?: (error: Event) => Promise<void>;
     onData?: (data: WebsocketMessage) => Promise<void>;
     onMaxRetry?: (resetRetryCount: () => void) => Promise<void>;
+    onReconnect?: (attempt: number) => Promise<void>;
+    onTransportChange?: (transport: 'ws' | 'lp') => Promise<void>;
+    onStatusChange?: (status: string) => Promise<void>;
 }
 
 export interface WebSocketServiceParams {
