@@ -14,7 +14,9 @@ export class RestClients {
             this.config.getAccessToken(),
             this.pipewaveIDPromise,
         ])
+        const additionalHeaders = this.config.additionalHeaders ? await this.config.additionalHeaders() : {}
         return {
+            ...additionalHeaders,
             'Authorization': `Bearer ${token}`,
             'X-Pipewave-ID': pipewaveID,
         }

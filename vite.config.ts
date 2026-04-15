@@ -47,6 +47,7 @@ export default defineConfig(() => {
                         'react',
                         'react-dom',
                         'react-router-dom',
+                        '@msgpack/msgpack',
                     ];
 
                     // Check exact match or subpath

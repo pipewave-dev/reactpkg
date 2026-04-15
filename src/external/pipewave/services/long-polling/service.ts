@@ -10,21 +10,16 @@ export class LongPollingService {
     private isConnected: boolean = false
     private keepAlive: boolean = false
     private isSuspend: boolean = false
-    private isReconnecting: boolean = false
-    private retryDelay: number
-    private retryCount: number = 0
     private abortController: AbortController | null = null
 
     constructor(
         private client: RestClients,
         private params: WebsocketConfig,
     ) {
-        this.retryDelay = params.retryCfg.initialRetryDelay
     }
 
     public getStatus(): WsStatus {
         if (this.isSuspend) return WsStatus.SUSPEND
-        if (this.isReconnecting) return WsStatus.RECONNECTING
         if (this.isConnected) return WsStatus.READY
         return WsStatus.NOT_READY
     }
@@ -34,7 +29,7 @@ export class LongPollingService {
     }
 
     public connect() {
-        if (this.isConnected || this.isReconnecting) return
+        if (this.isConnected) return
         this.startPollLoop()
     }
 
@@ -43,14 +38,32 @@ export class LongPollingService {
         this.stopLoop()
     }
 
+    /**
+     * @internal DEBUG ONLY — force-closes the LP connection without touching
+     * useCount. Simulates an unintentional network disconnect (e.g. WiFi → 4G).
+     * WARNING: Do NOT call this in production code.
+     */
+    public debugForceClose(): void {
+        this.keepAlive = false
+        this.stopLoop()
+    }
+
+    /**
+     * @internal DEBUG ONLY — re-establishes the LP connection after a
+     * debugForceClose(). Bypasses useCount.
+     * WARNING: Do NOT call this in production code.
+     */
+    public debugForceConnect(): void {
+        this.keepAlive = true
+        this.connect()
+    }
+
     public resetRetryCount() {
         this.isSuspend = false
-        this.retryCount = 0
-        this.retryDelay = this.params.retryCfg.initialRetryDelay
         this.startPollLoop()
     }
 
-    public async send(data: WebsocketMessage): Promise<void> {
+    public async send(data: Pick<WebsocketMessage, 'Id' | 'MsgType' | 'Data'>): Promise<void> {
         if (!this.isConnected) {
             throw new Unexpected('LongPolling is not connected')
         }
@@ -75,14 +88,12 @@ export class LongPollingService {
 
     private stopLoop() {
         this.isConnected = false
-        this.isReconnecting = false
         this.abortController?.abort()
         this.abortController = null
     }
 
     private async startPollLoop() {
         this.isConnected = true
-        this.isReconnecting = false
 
         if (this.params.eventHandler.onOpen) {
             await this.params.eventHandler.onOpen()
@@ -111,9 +122,6 @@ export class LongPollingService {
             if (res.status === 200) {
                 const buf = await res.arrayBuffer()
                 const messages = decode(buf) as Uint8Array[]
-                this.retryCount = 0
-                this.retryDelay = this.params.retryCfg.initialRetryDelay
-                this.isReconnecting = false
                 await this.processMessages(messages)
                 return false // continue polling
             }
@@ -151,13 +159,17 @@ export class LongPollingService {
     }
 
     private async processMessages(messages: Uint8Array[]) {
-        if (!this.params.eventHandler.onData) return
         for (const bytes of messages) {
             try {
                 const unpacked = unpackMessage(bytes)
                 if (unpacked.t === HEARTBEAT_MSG_TYPE) continue
+                if (unpacked.a) {
+                    this.sendAck(unpacked.a)
+                }
+                if (!this.params.eventHandler.onData) continue
                 await this.params.eventHandler.onData({
                     Id: unpacked.i,
+                    ReturnToId: unpacked.r,
                     MsgType: unpacked.t,
                     Data: unpacked.b,
                     Error: unpacked.e,
@@ -168,10 +180,12 @@ export class LongPollingService {
         }
     }
 
+    private sendAck(ackId: string): void {
+        this.send({ Id: '', MsgType: '__ack__', Data: new TextEncoder().encode(ackId) }).catch(() => { })
+    }
+
     private async handleSessionGone() {
         // 410: server closed session (idle timeout). Reset and start over.
-        this.retryCount = 0
-        this.retryDelay = this.params.retryCfg.initialRetryDelay
         if (this.params.eventHandler.onClose) {
             await this.params.eventHandler.onClose()
         }
@@ -185,29 +199,16 @@ export class LongPollingService {
     }
 
     private async handlePollError(): Promise<boolean> {
-        this.isReconnecting = true
-        this.retryCount++
-
-        if (this.retryCount >= this.params.retryCfg.maxRetry) {
-            this.isSuspend = true
-            this.isConnected = false
-            this.isReconnecting = false
-            if (this.params.eventHandler.onMaxRetry) {
-                await this.params.eventHandler.onMaxRetry(() => this.resetRetryCount())
-            }
-            return true // stop loop
+        this.isSuspend = true
+        this.isConnected = false
+        if (this.params.eventHandler.onMaxRetry) {
+            await this.params.eventHandler.onMaxRetry(() => this.resetRetryCount())
         }
-
-        await sleep(this.retryDelay)
-        this.retryDelay = Math.min(
-            this.retryDelay * 2,
-            this.params.retryCfg.maxRetryDelay,
-        )
-        return false // retry
+        return true // stop loop
     }
 }
 
-function packMessage(data: WebsocketMessage): Uint8Array<ArrayBuffer> {
+function packMessage(data: Pick<WebsocketMessage, 'Id' | 'MsgType' | 'Data'>): Uint8Array<ArrayBuffer> {
     const encoded = encode({
         i: data.Id,
         t: data.MsgType,
@@ -224,9 +225,6 @@ function unpackMessage(data: Uint8Array) {
         t: string
         e: string
         b: Uint8Array
+        a?: string
     }
-}
-
-function sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
 }

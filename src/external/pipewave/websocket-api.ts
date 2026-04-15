@@ -13,6 +13,8 @@ class WebsocketApi {
     private useCount: number = 0
     private readonly wsConfig: WebsocketConfig
     private transportLocked: boolean = false
+    private disconnectTimer: ReturnType<typeof setTimeout> | null = null
+    private static readonly DISCONNECT_GRACE_MS = 3000
 
     constructor({ restConfig, websocketConfig }: { restConfig: RestConfig, websocketConfig: WebsocketConfig }) {
         if (!websocketConfig.instanceID) {
@@ -87,6 +89,9 @@ class WebsocketApi {
         if (this.activeTransport === 'lp') return
 
         this.activeTransport = 'lp'
+    if (this.wsConfig.eventHandler.onTransportChange) {
+            this.wsConfig.eventHandler.onTransportChange('lp')
+        }
 
         // LP onMaxRetry falls back to the original user-provided handler
         const lpConfig: WebsocketConfig = {
@@ -126,6 +131,10 @@ class WebsocketApi {
         this.useCount -= 1
     }
 
+    public getActiveTransport(): 'ws' | 'lp' {
+        return this.activeTransport
+    }
+
     public getStatus(): WsStatus {
         return this.activeSvc.getStatus()
     }
@@ -137,6 +146,10 @@ class WebsocketApi {
     }
 
     public connect() {
+        if (this.disconnectTimer !== null) {
+            clearTimeout(this.disconnectTimer)
+            this.disconnectTimer = null
+        }
         if (this.useCount === 0) {
             if (this.activeTransport === 'lp' && this.lpSvc) {
                 this.lpSvc.enableKeepAlive()
@@ -152,9 +165,15 @@ class WebsocketApi {
     public disconnect() {
         this.popUseCount()
         if (this.useCount === 0) {
-            this.activeSvc.close()
+            this.disconnectTimer = setTimeout(() => {
+                this.disconnectTimer = null
+                if (this.useCount === 0) {
+                    this.activeSvc.close()
+                }
+            }, WebsocketApi.DISCONNECT_GRACE_MS)
         }
     }
+
 
     public reconnect() {
         const forceLongPolling = typeof window !== 'undefined' && window.localStorage?.getItem('FORCE_LONG_POLLING') === 'true'
@@ -198,20 +217,39 @@ class WebsocketApi {
         this.websocketSvc.WsConnection()
     }
 
+    /**
+     * @internal DEBUG ONLY — simulates an unintentional disconnect (e.g. WiFi → 4G).
+     * Bypasses useCount — works regardless of how many hooks are subscribed.
+     * WARNING: Do NOT call this in production code.
+     */
+    public debugForceDisconnect(): void {
+        this.activeSvc.debugForceClose()
+    }
+
+    /**
+     * @internal DEBUG ONLY — force-reconnects after a debugForceDisconnect().
+     * Bypasses useCount.
+     * WARNING: Do NOT call this in production code.
+     */
+    public debugForceConnect(): void {
+        this.activeSvc.debugForceConnect()
+    }
+
     public send({ id, msgType, data }: { id: string, msgType: string, data: Uint8Array }): Promise<void> {
-        return this.activeSvc.send({ Id: id, MsgType: msgType, Data: data, Error: "" })
+        const result = this.activeSvc.send({ Id: id, MsgType: msgType, Data: data })
+        this.wsConfig.eventHandler.onSend?.({ id, msgType, data })?.catch(() => {})
+        return result
     }
 }
 
 function randomString(length: number): string {
     const chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const values = crypto.getRandomValues(new Uint8Array(length));
     let result = "";
-
     for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+        result += chars.charAt(values[i] % chars.length);
     }
-
     return result;
 }
 
