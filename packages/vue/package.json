@@ -1,0 +1,47 @@
+{
+    "name": "@pipewave/vue",
+    "description": "Vue adapter for the Pipewave client SDK.",
+    "version": "0.0.1",
+    "type": "module",
+    "main": "./dist/index.es.js",
+    "module": "./dist/index.es.js",
+    "types": "./dist/index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "git+https://https://github.com/pipewave-dev/node-client.git"
+    },
+    "homepage": "https://https://github.com/pipewave-dev/node-client",
+    "bugs": {
+        "url": "https://https://github.com/pipewave-dev/node-client/issues"
+    },
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.es.js"
+        }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "vite build --config vite.config.ts",
+        "typecheck": "tsc -p tsconfig.json --noEmit"
+    },
+    "peerDependencies": {
+        "vue": "^3.0.0"
+    },
+    "dependencies": {
+        "@pipewave/core": "workspace:^"
+    },
+    "keywords": [
+        "pipewave",
+        "sdk",
+        "vue",
+        "websocket",
+        "realtime"
+    ],
+    "sideEffects": false
+}

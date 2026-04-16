@@ -1,0 +1,53 @@
+{
+    "name": "pipewave-sdk-workspace",
+    "private": true,
+    "version": "0.0.1",
+    "type": "module",
+    "packageManager": "pnpm@10.32.1",
+    "repository": {
+        "type": "git",
+        "url": "git+https://https://github.com/pipewave-dev/node-client.git"
+    },
+    "scripts": {
+        "dev": "vite",
+        "build": "pnpm -r --filter './packages/*' build",
+        "typecheck": "pnpm -r --filter './packages/*' typecheck && tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+        "lint": "eslint .",
+        "preview": "vite preview",
+        "test:e2e": "playwright test",
+        "version:check": "node scripts/release/check-workspace-version.mjs",
+        "version:set": "node scripts/release/set-workspace-version.mjs",
+        "release:check": "pnpm version:check && pnpm typecheck && pnpm build",
+        "publish:core": "pnpm --filter @pipewave/core publish --access public --no-git-checks",
+        "publish:react": "pnpm --filter @pipewave/react publish --access public --no-git-checks",
+        "publish:vue": "pnpm --filter @pipewave/vue publish --access public --no-git-checks",
+        "publish:vanilla": "pnpm --filter @pipewave/vanilla publish --access public --no-git-checks",
+        "publish:core:dry": "pnpm --filter @pipewave/core publish --dry-run --access public --no-git-checks",
+        "publish:react:dry": "pnpm --filter @pipewave/react publish --dry-run --access public --no-git-checks",
+        "publish:vue:dry": "pnpm --filter @pipewave/vue publish --dry-run --access public --no-git-checks",
+        "publish:vanilla:dry": "pnpm --filter @pipewave/vanilla publish --dry-run --access public --no-git-checks",
+        "publish:all:dry": "pnpm release:check && pnpm publish:core:dry && pnpm publish:react:dry && pnpm publish:vue:dry && pnpm publish:vanilla:dry",
+        "publish:all": "pnpm release:check && pnpm publish:core && pnpm publish:react && pnpm publish:vue && pnpm publish:vanilla"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.1",
+        "@msgpack/msgpack": "^3.1.3",
+        "@playwright/test": "^1.59.1",
+        "@types/node": "^24.10.2",
+        "@types/react": "^19.2.5",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^5.1.1",
+        "eslint": "^9.39.1",
+        "eslint-plugin-react-hooks": "^7.0.1",
+        "eslint-plugin-react-refresh": "^0.4.24",
+        "globals": "^17.1.0",
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+        "tsx": "^4.21.0",
+        "typescript": "~5.9.3",
+        "typescript-eslint": "^8.46.4",
+        "vite": "^6.0.11",
+        "vite-plugin-dts": "^4.5.4",
+        "vue": "^3.5.32"
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ],
+            "@pipewave/core": [
+                "../core/src/index.ts"
+            ]
+        }
+    },
+    "include": [
+        "src"
+    ]
+}

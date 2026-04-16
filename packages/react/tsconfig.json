@@ -1,0 +1,18 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "jsx": "react-jsx",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ],
+            "@pipewave/core": [
+                "../core/src/index.ts"
+            ]
+        }
+    },
+    "include": [
+        "src"
+    ]
+}
